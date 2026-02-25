@@ -429,6 +429,3 @@ Follow this end-to-end walkthrough to verify all modules work together:
 
 ---
 
-## 📄 License
-
-MIT © [Devansh Behl](https://github.com/DevanshBehl)
