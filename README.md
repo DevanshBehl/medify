@@ -10,6 +10,7 @@
 ![React](https://img.shields.io/badge/React-18%2B-blue?logo=react&logoColor=white)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.x-blue?logo=typescript&logoColor=white)
 ![Tailwind CSS](https://img.shields.io/badge/TailwindCSS-4.x-38bdf8?logo=tailwindcss&logoColor=white)
+![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white)
 
 </div>
 
@@ -25,7 +26,8 @@
 - [Directory Structure](#-directory-structure)
 - [Data Models (ERD)](#-data-models)
 - [API Reference](#-api-reference)
-- [Local Setup](#-local-setup)
+- [Local Setup (Manual)](#%EF%B8%8F-local-setup)
+- [Docker Setup](#-docker-setup)
 - [Seeding Demo Data](#-seeding-demo-data)
 - [Demo Accounts](#-demo-accounts)
 - [Core Demo Flow](#-core-demo-flow)
@@ -352,6 +354,107 @@ node server.js
 cd client
 npm run dev
 # → http://localhost:5173
+```
+
+---
+
+## 🐳 Docker Setup
+
+The easiest way to run Medify — no need to install MongoDB or manage multiple terminals.
+
+### Prerequisites
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/) installed and running
+
+---
+
+### 1. Clone & Configure Environment
+
+```bash
+git clone https://github.com/DevanshBehl/medify.git
+cd medify
+
+# Create root .env from template (for JWT secret override)
+cp .env.example .env
+```
+
+The root `.env` is optional — the JWT secret defaults to a placeholder. For production, set:
+
+```env
+JWT_SECRET=your_super_secret_key_here
+JWT_EXPIRES_IN=1d
+```
+
+> **Note:** `MONGO_URI` is automatically set by Docker Compose (`mongodb://mongo:27017/medify`) — you don't need to configure it.
+
+---
+
+### 2. Build & Start All Services
+
+```bash
+docker compose up --build
+```
+
+This starts **3 containers** simultaneously:
+
+| Container         | Service              | Port   |
+|-------------------|----------------------|--------|
+| `medify_mongo`    | MongoDB 7            | 27017  |
+| `medify_server`   | Express API          | 5000   |
+| `medify_client`   | React (Vite Dev)     | 5173   |
+
+**Access the app:** `http://localhost:5173`
+
+---
+
+### 3. Seed Demo Data (in Docker)
+
+After the containers are running, open a new terminal and run:
+
+```bash
+docker exec -it medify_server node seed.js
+```
+
+---
+
+### 4. Other Useful Commands
+
+```bash
+# Run in background (detached mode)
+docker compose up --build -d
+
+# View live logs
+docker compose logs -f
+
+# View logs for a specific service
+docker compose logs -f server
+
+# Stop all containers
+docker compose down
+
+# Stop AND delete the MongoDB data volume (full reset)
+docker compose down -v
+
+# Rebuild a single service after code changes
+docker compose up --build server
+```
+
+---
+
+### Docker Architecture
+
+```
+┌─────────────────────────────────────────────────────┐
+│                  Docker Network (bridge)             │
+│                                                      │
+│  ┌─────────────┐   ┌──────────────┐   ┌──────────┐  │
+│  │  medify_    │   │  medify_     │   │ medify_  │  │
+│  │  client     │──▶│  server      │──▶│ mongo    │  │
+│  │  :5173      │   │  :5000       │   │ :27017   │  │
+│  └─────────────┘   └──────────────┘   └──────────┘  │
+│                                            │         │
+│                                     mongo_data       │
+│                                     (named volume)   │
+└─────────────────────────────────────────────────────┘
 ```
 
 ---
