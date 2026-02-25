@@ -1,0 +1,76 @@
+version: '3.9'
+
+services:
+  # ─────────────────────────────────────────
+  # MongoDB Database
+  # ─────────────────────────────────────────
+  mongo:
+    image: mongo:7
+    container_name: medify_mongo
+    restart: unless-stopped
+    ports:
+      - '27017:27017'
+    volumes:
+      - mongo_data:/data/db
+    networks:
+      - medify_network
+    healthcheck:
+      test: ['CMD', 'mongosh', '--eval', 'db.adminCommand("ping")']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ─────────────────────────────────────────
+  # Express Backend (API Server)
+  # ─────────────────────────────────────────
+  server:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: medify_server
+    restart: unless-stopped
+    ports:
+      - '5000:5000'
+    environment:
+      - PORT=5000
+      - MONGO_URI=mongodb://mongo:27017/medify
+      - JWT_SECRET=${JWT_SECRET:-supersecretkey_change_in_production}
+      - JWT_EXPIRES_IN=${JWT_EXPIRES_IN:-1d}
+    depends_on:
+      mongo:
+        condition: service_healthy
+    networks:
+      - medify_network
+    volumes:
+      - ./server:/app
+      - /app/node_modules
+
+  # ─────────────────────────────────────────
+  # React Frontend (Vite Dev Server)
+  # ─────────────────────────────────────────
+  client:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+    container_name: medify_client
+    restart: unless-stopped
+    ports:
+      - '5173:5173'
+    depends_on:
+      - server
+    networks:
+      - medify_network
+    volumes:
+      - ./client:/app
+      - /app/node_modules
+
+# ─────────────────────────────────────────
+# Shared Network & Persistent Volume
+# ─────────────────────────────────────────
+networks:
+  medify_network:
+    driver: bridge
+
+volumes:
+  mongo_data:
+    driver: local
