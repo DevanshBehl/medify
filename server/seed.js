@@ -3,6 +3,7 @@ const dotenv = require('dotenv');
 
 // Load env
 dotenv.config();
+const bcrypt = require('bcrypt');
 
 // Models
 const User = require('./models/users');
@@ -31,11 +32,12 @@ const seedDB = async () => {
         console.log('Cleared existing data.');
 
         // 1. Users (4: admin, receptionist, doctor, pharmacist)
+        const hashedPassword = await bcrypt.hash('password123', 10);
         const usersData = [
-            { name: 'Admin User', email: 'admin@medify.com', password: 'password123', role: 'admin' },
-            { name: 'Recp User', email: 'recp@medify.com', password: 'password123', role: 'receptionist' },
-            { name: 'Doc User', email: 'doctor@medify.com', password: 'password123', role: 'doctor' },
-            { name: 'Pharm User', email: 'pharm@medify.com', password: 'password123', role: 'pharmacist' }
+            { name: 'Admin User', email: 'admin@medify.com', password: hashedPassword, role: 'admin' },
+            { name: 'Recp User', email: 'recp@medify.com', password: hashedPassword, role: 'receptionist' },
+            { name: 'Doc User', email: 'doctor@medify.com', password: hashedPassword, role: 'doctor' },
+            { name: 'Pharm User', email: 'pharm@medify.com', password: hashedPassword, role: 'pharmacist' }
         ];
         const users = await User.insertMany(usersData);
         const doctorUser = users.find(u => u.role === 'doctor');
@@ -56,10 +58,10 @@ const seedDB = async () => {
         // 3. Doctors (5)
         // We already have one user for doctor, let's create a few more user accounts for the other 4 doctors to satisfy "5 doctors"
         const extraDocsUser = await User.insertMany([
-            { name: 'Doc Cardio', email: 'cardio@medify.com', password: 'password123', role: 'doctor' },
-            { name: 'Doc Neuro', email: 'neuro@medify.com', password: 'password123', role: 'doctor' },
-            { name: 'Doc Ortho', email: 'ortho@medify.com', password: 'password123', role: 'doctor' },
-            { name: 'Doc Peds', email: 'peds@medify.com', password: 'password123', role: 'doctor' }
+            { name: 'Doc Cardio', email: 'cardio@medify.com', password: hashedPassword, role: 'doctor' },
+            { name: 'Doc Neuro', email: 'neuro@medify.com', password: hashedPassword, role: 'doctor' },
+            { name: 'Doc Ortho', email: 'ortho@medify.com', password: hashedPassword, role: 'doctor' },
+            { name: 'Doc Peds', email: 'peds@medify.com', password: hashedPassword, role: 'doctor' }
         ]);
 
         const allDocUsers = [doctorUser, ...extraDocsUser];
