@@ -19,7 +19,7 @@ const StockLog = require('./models/stocklogs');
 
 const seedDB = async () => {
     try {
-        await mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/medify');
+        await mongoose.connect(process.env.MONGO_URI);
         console.log('MongoDB Connected to seed data');
 
         // Clear existing data

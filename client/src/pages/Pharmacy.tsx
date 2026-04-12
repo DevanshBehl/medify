@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { Pill, AlertTriangle } from 'lucide-react';
 
-const API_URL = 'http://localhost:5000/api';
+const API_URL = 'http://localhost:5001/api';
 
 const Pharmacy: React.FC = () => {
     const [medicines, setMedicines] = useState<any[]>([]);

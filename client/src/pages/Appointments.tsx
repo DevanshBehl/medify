@@ -3,7 +3,7 @@ import axios from 'axios';
 import { Calendar, Clock } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
-const API_URL = 'http://localhost:5000/api';
+const API_URL = 'http://localhost:5001/api';
 
 const Appointments: React.FC = () => {
     const [appointments, setAppointments] = useState<any[]>([]);

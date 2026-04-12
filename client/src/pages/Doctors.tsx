@@ -3,7 +3,7 @@ import axios from 'axios';
 import { motion } from 'framer-motion';
 import { Calendar as CalendarIcon, Clock, Phone, Stethoscope } from 'lucide-react';
 
-const API_URL = 'http://localhost:5000/api';
+const API_URL = 'http://localhost:5001/api';
 
 const Doctors: React.FC = () => {
     const [doctors, setDoctors] = useState<any[]>([]);

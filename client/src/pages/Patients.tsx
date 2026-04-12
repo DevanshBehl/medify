@@ -3,7 +3,7 @@ import axios from 'axios';
 import { motion } from 'framer-motion';
 import { Search, Plus, Activity, Phone } from 'lucide-react';
 
-const API_URL = 'http://localhost:5000/api';
+const API_URL = 'http://localhost:5001/api';
 
 const Patients: React.FC = () => {
     const [patients, setPatients] = useState<any[]>([]);
