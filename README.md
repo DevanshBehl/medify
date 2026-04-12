@@ -42,32 +42,26 @@
 
 ## 🏗 Architecture
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                         CLIENT (React)                       │
-│  ╔══════════╗  ╔══════════════╗  ╔══════════════════════╗   │
-│  ║  Auth    ║  ║ Role-Based   ║  ║  Feature Pages       ║   │
-│  ║ Context  ║  ║  Routes      ║  ║  (Dashboard / Beds / ║   │
-│  ╚══════════╝  ╚══════════════╝  ║   Pharmacy / Billing)║   │
-│                                  ╚══════════════════════╝   │
-│                    Axios (Bearer JWT)                        │
-└─────────────────────┬───────────────────────────────────────┘
-                      │  HTTP REST API
-┌─────────────────────▼───────────────────────────────────────┐
-│                      SERVER (Express)                        │
-│  ╔══════════╗  ╔══════════════╗  ╔══════════════════════╗   │
-│  ║  JWT     ║  ║    Routes    ║  ║  PDF Generation      ║   │
-│  ║  Auth    ║  ║  (CRUD +     ║  ║  (pdfkit)            ║   │
-│  ║ Middleware║ ║  Aggregation)║  ╚══════════════════════╝   │
-│  ╚══════════╝  ╚══════════════╝                             │
-│                    Mongoose ODM                              │
-└─────────────────────┬───────────────────────────────────────┘
-                      │
-┌─────────────────────▼───────────────────────────────────────┐
-│                      MongoDB Database                        │
-│  users · patients · doctors · beds · appointments           │
-│  admissions · medicines · prescriptions · bills · stocklogs │
-└─────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    subgraph Client["CLIENT (React)"]
+        A["Auth Context"]
+        B["Role-Based Routes"]
+        C["Feature Pages<br/>(Dashboard / Beds / Pharmacy / Billing)"]
+    end
+
+    subgraph Server["SERVER (Express)"]
+        D["JWT Auth Middleware"]
+        E["Routes<br/>(CRUD + Aggregation)"]
+        F["PDF Generation (pdfkit)"]
+    end
+
+    subgraph Database["MongoDB Database"]
+        G[("users · patients · doctors · beds<br/>appointments · admissions · medicines<br/>prescriptions · bills · stocklogs")]
+    end
+
+    Client -- "Axios (Bearer JWT)<br/>HTTP REST API" --> Server
+    Server -- "Mongoose ODM" --> Database
 ```
 
 ---
@@ -217,36 +211,109 @@ medify/
 
 ## 🗄 Data Models
 
-```
-Users ─────────────────────────────────────────────────────────┐
-  _id, name, email, password(hashed), role, createdAt          │
-                                                               │
-Patients ─────────────────────────────────────────────────────┐│
-  _id, name, age, gender, bloodGroup, contact,                 ││
-  address, medicalHistory, isActive, createdAt                 ││
-       │                                                       ││
-       ├──── Appointments ────────────── Bills                 ││
-       │       patientId (ref)            patientId (ref)      ││
-       │       doctorId (ref) ──────┐     appointmentId (ref)  ││
-       │       date, timeSlot       │     admissionId (ref)    ││
-       │       status, diagnosis    │     fees, total, status  ││
-       │            │               │                          ││
-       │            └── Prescriptions   Doctors ───────────────┘│
-       │                 appointmentId   userId (ref Users) ────┘
-       │                 medicines[]     specialization, fee
-       │                 issuedBy (ref)  shiftStart/End
-       │                                availableDays, leaveDates
-       ├──── Admissions
-               patientId (ref)
-               bedId (ref) ────── Beds
-               admitDate            wardName, bedNumber
-               dischargeDate        floor, status
-               reason, perDayCharge currentPatient (ref)
+```mermaid
+erDiagram
+    Users {
+        ObjectId _id
+        String name
+        String email
+        String password
+        String role
+        Date createdAt
+    }
+    
+    Patients {
+        ObjectId _id
+        String name
+        Int age
+        String gender
+        String bloodGroup
+        String contact
+        String address
+        String medicalHistory
+        Boolean isActive
+        Date createdAt
+    }
 
-Medicines ────────────────────── StockLogs
-  name, category, qty              medicineId (ref)
-  reorderLevel, expiry             action, quantityChanged
-  pricePerUnit                     performedBy (ref Users)
+    Appointments {
+        ObjectId patientId
+        ObjectId doctorId
+        Date date
+        String timeSlot
+        String status
+        String diagnosis
+    }
+
+    Bills {
+        ObjectId patientId
+        ObjectId appointmentId
+        ObjectId admissionId
+        Number fees
+        Number total
+        String status
+    }
+
+    Prescriptions {
+        ObjectId appointmentId
+        Array medicines
+        ObjectId issuedBy
+    }
+
+    Doctors {
+        ObjectId userId
+        String specialization
+        Number fee
+        String shiftStart
+        String shiftEnd
+        Array availableDays
+        Array leaveDates
+    }
+
+    Admissions {
+        ObjectId patientId
+        ObjectId bedId
+        Date admitDate
+        Date dischargeDate
+        String reason
+        Number perDayCharge
+    }
+
+    Beds {
+        String wardName
+        String bedNumber
+        String floor
+        String status
+        ObjectId currentPatient
+    }
+
+    Medicines {
+        String name
+        String category
+        Number qty
+        Number reorderLevel
+        Date expiry
+        Number pricePerUnit
+    }
+
+    StockLogs {
+        ObjectId medicineId
+        String action
+        Number quantityChanged
+        ObjectId performedBy
+    }
+
+    Patients ||--o{ Appointments : "has"
+    Patients ||--o{ Admissions : "has"
+    Patients ||--o{ Bills : "has"
+    Doctors ||--o{ Appointments : "attends"
+    Appointments ||--o| Prescriptions : "results in"
+    Appointments ||--o| Bills : "generates"
+    Admissions ||--|{ Beds : "occupies"
+    Admissions ||--o| Bills : "generates"
+    Users ||--o| Doctors : "is a"
+    Users ||--o{ Prescriptions : "issues"
+    Users ||--o{ StockLogs : "performs"
+    Medicines ||--o{ StockLogs : "logs"
 ```
 
 ---
@@ -442,19 +509,18 @@ docker compose up --build server
 
 ### Docker Architecture
 
-```
-┌─────────────────────────────────────────────────────┐
-│                  Docker Network (bridge)             │
-│                                                      │
-│  ┌─────────────┐   ┌──────────────┐   ┌──────────┐  │
-│  │  medify_    │   │  medify_     │   │ medify_  │  │
-│  │  client     │──▶│  server      │──▶│ mongo    │  │
-│  │  :5173      │   │  :5000       │   │ :27017   │  │
-│  └─────────────┘   └──────────────┘   └──────────┘  │
-│                                            │         │
-│                                     mongo_data       │
-│                                     (named volume)   │
-└─────────────────────────────────────────────────────┘
+```mermaid
+flowchart LR
+    subgraph Docker_Network["Docker Network (bridge)"]
+        A["medify_client<br/>:5173"]
+        B["medify_server<br/>:5000"]
+        C["medify_mongo<br/>:27017"]
+        D[("mongo_data<br/>(named volume)")]
+        
+        A --> B
+        B --> C
+        C --> D
+    end
 ```
 
 ---
@@ -493,41 +559,18 @@ What gets seeded:
 
 Follow this end-to-end walkthrough to verify all modules work together:
 
-```
-1. Login as Receptionist  ─────────────────────────────────────────────┐
-   └─ recp@medify.com / password123                                    │
-                                                                       │
-2. Register Patient ────────────────────────────────────────────────── │
-   └─ Patients → Add Patient → fill demographics                       │
-                                                                       │
-3. Book Appointment ─────────────────────────────────────────────────  │
-   └─ Appointments → New Appointment                                   │
-      Select: Patient → Specialization → Doctor → Date → Time Slot    │
-                                                                       │
-4. Admit Patient to a Bed ───────────────────────────────────────────  │
-   └─ Beds → Available bed → Allocate → link to patient                │
-   └─ Bed turns Red (Occupied)                                         │
-                                                                       │
-5. Login as Doctor ───────────────────────────────────────────────────┐│
-   └─ doctor@medify.com / password123                                 ││
-   └─ View today's appointment, add diagnosis, create Prescription    ││
-                                                                      ││
-6. Login as Pharmacist ──────────────────────────────────────────────┐││
-   └─ pharm@medify.com / password123                                 │││
-   └─ Pharmacy → Low Stock alerts visible (red rows)                 │││
-   └─ Issue medicines against the prescription                       │││
-      → stock auto-deducted, StockLog created                        │││
-                                                                     │││
-7. Generate Bill ─────────────────────────────────────────────────── │││
-   └─ Login as Receptionist                                          │││
-   └─ Billing → Generate New Bill → selects patient + appointment    │││
-   └─ Auto-calculates: Consultation + Medicine + Bed charges         │││
-   └─ Export as PDF                                                  │││
-                                                                     │││
-8. Discharge Patient ─────────────────────────────────────────────── │││
-   └─ Beds → Occupied bed → Release                                  │││
-   └─ Bed turns Green (Available) ✅                                 │││
-   └─ Admission discharge date auto-set                              │││
+```mermaid
+flowchart TD
+    A["1. Login as Receptionist<br/>(recp@medify.com / password123)"]
+    B["2. Register Patient<br/>(Patients → Add Patient → fill demographics)"]
+    C["3. Book Appointment<br/>(Appointments → New Appointment<br/>Select: Patient → Specialization → Doctor → Date → Time Slot)"]
+    D["4. Admit Patient to a Bed<br/>(Beds → Available bed → Allocate → link to patient<br/>Bed turns Red Occupied)"]
+    E["5. Login as Doctor<br/>(doctor@medify.com / password123<br/>View today's appointment, add diagnosis, create Prescription)"]
+    F["6. Login as Pharmacist<br/>(pharm@medify.com / password123<br/>Pharmacy → Low Stock alerts visible<br/>Issue medicines against the prescription<br/>stock auto-deducted, StockLog created)"]
+    G["7. Generate Bill<br/>(Login as Receptionist<br/>Billing → Generate New Bill → selects patient + appointment<br/>Auto-calculates: Consultation + Medicine + Bed charges<br/>Export as PDF)"]
+    H["8. Discharge Patient<br/>(Beds → Occupied bed → Release<br/>Bed turns Green Available ✅<br/>Admission discharge date auto-set)"]
+
+    A --> B --> C --> D --> E --> F --> G --> H
 ```
 
 ---
